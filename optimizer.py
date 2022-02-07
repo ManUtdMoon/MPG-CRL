@@ -525,12 +525,12 @@ class TRPOOptimizer(object):
                     tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
                 self.writer.flush()
         # evaluate
-        if self.iteration % self.args.eval_interval == 0:
+        if self.iteration % self.args.eval_interval == 0 or self.iteration == (self.args.max_iter - 1):
             self.evaluator.set_weights.remote(self.local_worker.get_weights())
             self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
             self.evaluator.run_evaluation.remote(self.iteration)
         # save
-        if self.iteration % self.args.save_interval == 0:
+        if self.iteration % self.args.save_interval == 0 or self.iteration == (self.args.max_iter - 1):
             self.workers['local_worker'].save_weights(self.model_dir, self.iteration)
             self.workers['remote_workers'][0].save_ppc_params.remote(self.args.model_dir)
         self.iteration += 1
