@@ -330,14 +330,14 @@ def built_PPO_parser_for_DSAC():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=max_iter)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_workers', type=int, default=6)
     parser.add_argument("--eval_interval", type=int, default=eval_interval)
     parser.add_argument("--save_interval", type=int, default=save_interval)
     parser.add_argument("--log_interval", type=int, default=1)
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/PPO/{task}-{time}'.format(task=env_id, time=time_now)
+    results_dir = '../results/PPO/{task}-{time}'.format(task=env_id, time=time_now)
     parser.add_argument("--result_dir", type=str, default=results_dir)
     parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
     parser.add_argument("--model_dir", type=str, default=results_dir + '/models')

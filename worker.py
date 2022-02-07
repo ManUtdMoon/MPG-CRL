@@ -39,7 +39,8 @@ class OnPolicyWorker(object):
         self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
-        self.learner = learner_cls(self.policy_with_value, self.args)
+        if self.worker_id != 0:
+            self.learner = learner_cls(self.policy_with_value, self.args)
         self.sample_batch_size = self.args.sample_batch_size
         self.obs = self.env.reset()
         self.done = False

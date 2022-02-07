@@ -20,6 +20,10 @@ logging.basicConfig(level=logging.INFO)
 
 class PPOLearner(tf.Module):
     import tensorflow as tf
+    # gpus = tf.config.experimental.list_physical_devices('GPU')
+    # print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+    # tf.config.experimental.set_memory_growth(gpus[0], True)
+    # tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
     tf.config.experimental.set_visible_devices([], 'GPU')
     tf.config.threading.set_inter_op_parallelism_threads(1)
     tf.config.threading.set_intra_op_parallelism_threads(1)
