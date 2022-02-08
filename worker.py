@@ -10,6 +10,7 @@
 import logging
 import os
 from collections import deque
+from typing import Any, Dict, List, Optional, Type
 
 import gym
 import numpy as np
@@ -39,9 +40,10 @@ class OnPolicyWorker(object):
         self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
-        if self.worker_id != 0:
+        if self.worker_id == 0:
             self.learner = learner_cls(self.policy_with_value, self.args)
         self.sample_batch_size = self.args.sample_batch_size
+        self.total_sample_batch_size = self.sample_batch_size * self.args.num_workers
         self.obs = self.env.reset()
         self.done = False
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
@@ -93,7 +95,7 @@ class OnPolicyWorker(object):
 
     def sample_and_process(self):
         with self.sampling_timer:
-            epinfos = []
+            # epinfos = []
             batch_data = []
             for _ in range(self.sample_batch_size):
                 processed_obs = self.preprocessor.process_obs(self.obs)
@@ -104,21 +106,27 @@ class OnPolicyWorker(object):
                 obs_tp1, reward, self.done, info = self.env.step(action)
                 processed_rew = self.preprocessor.process_rew(reward, self.done)
                 self.obs = self.env.reset() if self.done else obs_tp1.copy()
-                maybeepinfo = info.get('episode')
-                if maybeepinfo:
-                    epinfos.append(maybeepinfo)
+                # maybeepinfo = info.get('episode')
+                # if maybeepinfo:
+                #     epinfos.append(maybeepinfo)
 
                 batch_data.append((processed_obs.copy(), action, processed_rew, self.done, logp))
+        self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean))
 
+        return batch_data
+
+    def process_batch_data(self, list_batches: List):
+        assert self.worker_id == 0
         with self.processing_timer:
-            data = self.learner.get_batch_data(batch_data)
+            total_data = [self.learner.get_batch_data(batch_data) for batch_data in list_batches]
+            data = self.learner.integrate_batches(total_data)
         ev = 1. - np.var(data['batch_tdlambda_returns']-data['batch_values'])/np.var(data['batch_tdlambda_returns'])
-        self.epinfobuf.extend(epinfos)
-        self.stats.update(explained_variance=ev,
-                          eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
-                          eplenmean=safemean([epinfo['l'] for epinfo in self.epinfobuf]))
-        self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean,
-                               worker_processing_time=self.processing_timer.mean))
+        # self.epinfobuf.extend(epinfos)
+        self.stats.update(explained_variance=ev,)
+                        #   eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
+                        #   eplenmean=safemean([epinfo['l'] for epinfo in self.epinfobuf]))
+        self.stats.update(dict(worker_processing_time=self.processing_timer.mean))
+        
         if self.args.reward_preprocess_type == 'normalize':
             self.stats.update(dict(ret_rms_var=self.preprocessor.ret_rms.var,
                                    ret_rms_mean=self.preprocessor.ret_rms.mean))

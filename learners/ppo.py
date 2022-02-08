@@ -8,6 +8,7 @@
 # =====================================
 
 import logging
+from typing import Any, Dict, List, Optional, Type
 
 import numpy as np
 import tensorflow as tf
@@ -20,10 +21,6 @@ logging.basicConfig(level=logging.INFO)
 
 class PPOLearner(tf.Module):
     import tensorflow as tf
-    # gpus = tf.config.experimental.list_physical_devices('GPU')
-    # print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
-    # tf.config.experimental.set_memory_growth(gpus[0], True)
-    # tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
     tf.config.experimental.set_visible_devices([], 'GPU')
     tf.config.threading.set_inter_op_parallelism_threads(1)
     tf.config.threading.set_intra_op_parallelism_threads(1)
@@ -33,6 +30,7 @@ class PPOLearner(tf.Module):
         self.args = args
         self.policy_with_value = policy_with_value
         self.batch_data = None
+        self.total_sample_batch_size = self.args.sample_batch_size * self.args.num_workers
         self.mb_learning_timer = TimerStat()
         self.stats = {}
         self.permutation = None
@@ -50,27 +48,38 @@ class PPOLearner(tf.Module):
 
         return tmp
 
-    def get_batch_data(self, batch_data):
-        self.batch_data = self.post_processing(batch_data)
-        batch_advs, batch_tdlambda_returns, batch_values = self.compute_advantage()
-        self.batch_data.update(dict(batch_advs=batch_advs,
-                                    batch_tdlambda_returns=batch_tdlambda_returns,
-                                    batch_values=batch_values))
+    def integrate_batches(self, batches_data: List[Dict]) -> Dict[str, np.ndarray]:
+        self.batch_data = {}
+        for key in batches_data[0].keys():
+            self.batch_data[key] = np.squeeze(
+                                       np.asarray([batch[key] for batch in batches_data], 
+                                                  dtype=np.float32).reshape((self.total_sample_batch_size, -1))
+                                   )
+        assert self.batch_data['batch_obs'].shape[0] == 1024*8, print(self.batch_data['batch_rewards'].shape)
         return self.batch_data
 
-    def compute_advantage(self):  # require data is in order
-        n_steps = len(self.batch_data['batch_rewards'])
-        batch_obs = self.batch_data['batch_obs']
-        batch_rewards = self.batch_data['batch_rewards']
-        batch_obs_tensor = self.tf.constant(batch_obs)
-        batch_values = self.policy_with_value.compute_vf(batch_obs_tensor).numpy()
-        batch_advs = np.zeros_like(self.batch_data['batch_rewards'])
-        lastgaelam = 0
-        for t in reversed(range(n_steps - 1)):
-            nextnonterminal = 1. - self.batch_data['batch_dones'][t]
-            delta = batch_rewards[t] + self.args.gamma * batch_values[t + 1] * nextnonterminal - batch_values[t]
-            batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
-        batch_tdlambda_returns = batch_advs + batch_values
+    def get_batch_data(self, batch_data: List) -> Dict:
+        batch_data = self.post_processing(batch_data)
+        batch_advs, batch_tdlambda_returns, batch_values = self.compute_advantage(batch_data)
+        batch_data.update(dict(batch_advs=batch_advs,
+                               batch_tdlambda_returns=batch_tdlambda_returns,
+                               batch_values=batch_values))
+        return batch_data
+
+    def compute_advantage(self, batch_data):  # require data is in order
+        with self.tf.device('/CPU:0'):
+            n_steps = len(batch_data['batch_rewards'])
+            batch_obs = batch_data['batch_obs']
+            batch_rewards = batch_data['batch_rewards']
+            batch_obs_tensor = self.tf.constant(batch_obs)
+            batch_values = self.policy_with_value.compute_vf(batch_obs_tensor).numpy()
+            batch_advs = np.zeros_like(batch_data['batch_rewards'])
+            lastgaelam = 0
+            for t in reversed(range(n_steps - 1)):
+                nextnonterminal = 1. - batch_data['batch_dones'][t]
+                delta = batch_rewards[t] + self.args.gamma * batch_values[t + 1] * nextnonterminal - batch_values[t]
+                batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
+            batch_tdlambda_returns = batch_advs + batch_values
 
         return batch_advs, batch_tdlambda_returns, batch_values
 
@@ -108,10 +117,11 @@ class PPOLearner(tf.Module):
 
     def compute_gradient_over_ith_minibatch(self, i):  # compute gradient of the i-th mini-batch
         if i == 0:
-            self.permutation = np.arange(self.args.sample_batch_size)
+            self.permutation = np.arange(self.args.sample_batch_size * self.args.num_workers)
             np.random.shuffle(self.permutation)
         with self.mb_learning_timer:
-            start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
+            start_idx, end_idx = i * self.args.mini_batch_size * self.args.num_workers, \
+                                 (i + 1) * self.args.mini_batch_size * self.args.num_workers
             mbinds = self.permutation[start_idx:end_idx]
             mb_obs = self.tf.constant(self.batch_data['batch_obs'][mbinds])
             mb_advs = self.tf.constant(self.batch_data['batch_advs'][mbinds])

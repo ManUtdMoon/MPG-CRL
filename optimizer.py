@@ -114,6 +114,7 @@ class AllReduceOptimizer(object):
         self.num_sampled_steps = 0
         self.num_updates = 0
         self.iteration = 0
+        self.num_iteration_per_epoch = int(self.args.sample_batch_size / self.args.mini_batch_size)
         self.log_dir = self.args.log_dir
         self.model_dir = self.args.model_dir
         if not os.path.exists(self.log_dir):
@@ -139,25 +140,30 @@ class AllReduceOptimizer(object):
         logger.info('sampling {} in total'.format(self.num_sampled_steps))
         with self.step_timer:
             for worker in self.workers['remote_workers']:
-                worker.sample_and_process.remote()
+                list_of_sample_batches = ray.get([worker.sample_and_process.remote()
+                                                  for worker in self.workers['remote_workers']])
+            self.local_worker.process_batch_data(list_of_sample_batches)
+
             all_stats = [[] for _ in range(self.args.num_workers)]
+            
             for i in range(self.args.epoch):
-                for mb_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
-                    mb_grads = ray.get([worker.compute_gradient_over_ith_minibatch.remote(mb_index)
-                                        for worker in self.workers['remote_workers']])
-                    worker_stats = ray.get([worker.get_stats.remote() for worker in self.workers['remote_workers']])
-                    final_grads = np.array(mb_grads).mean(axis=0).tolist()
+                for mb_index in range(self.num_iteration_per_epoch):
+                    # compute mini batch grads and apply
+                    mb_grads = self.local_worker.compute_gradient_over_ith_minibatch(mb_index)
                     try:
-                        judge_is_nan(final_grads)
+                        judge_is_nan(mb_grads)
                     except ValueError:
-                        final_grads = [tf.zeros_like(grad) for grad in final_grads]
+                        mb_grads = [tf.zeros_like(grad) for grad in mb_grads]
                         logger.info('Grad is nan!, zero it')
-                    self.local_worker.apply_grads_all(final_grads)
+                    self.local_worker.apply_grads_all(mb_grads)
                     self.sync_remote_workers()
+                    
+                    # collect stats: remote (only time)
+                    worker_stats = ray.get([worker.get_stats.remote() for worker in self.workers['remote_workers']])
                     for worker_index in range(self.args.num_workers):
                         all_stats[worker_index].append(worker_stats[worker_index].copy())
 
-        # deal with stats
+        # deal with stats: only sampling time here
         reduced_stats_for_all_workers = []
         for worker_index in range(self.args.num_workers):
             allstats4thisworker = all_stats[worker_index]
@@ -170,6 +176,9 @@ class AllReduceOptimizer(object):
         for key in reduced_stats_for_all_workers[0].keys():
             value_list = list(map(lambda x: x[key], reduced_stats_for_all_workers))
             all_reduced_stats.update({key: sum(value_list) / len(value_list)})
+        
+        # deal with stats: local worker, process
+        all_reduced_stats.update(self.local_worker.get_stats())
 
         # log
         if self.iteration % self.args.log_interval == 0:

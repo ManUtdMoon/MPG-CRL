@@ -285,7 +285,7 @@ def built_PPO_parser_for_DSAC():
     parser.add_argument("--gradient_clip_norm", type=float, default=1.)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--ppo_loss_clip", type=float, default=0.2)
-    parser.add_argument("--mini_batch_size", type=int, default=32)
+    parser.add_argument("--mini_batch_size", type=int, default=32)  # TODO: actual mb_size = mini * num_workers
     parser.add_argument("--ent_coef", type=float, default=0.0)
 
     # worker
@@ -330,7 +330,7 @@ def built_PPO_parser_for_DSAC():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=max_iter)
-    parser.add_argument('--num_workers', type=int, default=6)
+    parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument("--eval_interval", type=int, default=eval_interval)
     parser.add_argument("--save_interval", type=int, default=save_interval)
     parser.add_argument("--log_interval", type=int, default=1)
