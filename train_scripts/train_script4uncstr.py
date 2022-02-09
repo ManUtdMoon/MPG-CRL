@@ -245,6 +245,7 @@ def built_PPO_parser_for_DSAC():
 
     parser.add_argument('--motivation', type=str, default='add grad norm 1 clip')
     parser.add_argument('--mode', type=str, default='training') # training testing
+    parser.add_argument("--seed", type=int, default=0)
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -354,7 +355,7 @@ def built_TRPO_parser_for_DSAC():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/TRPO/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/TRPO/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
