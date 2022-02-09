@@ -14,6 +14,7 @@ from functools import reduce
 
 import gym
 import numpy as np
+import random
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat
@@ -60,6 +61,14 @@ class Evaluator(object):
         self.stats = {}
         self.eval_timer = TimerStat()
         self.eval_times = 0
+
+        self.seed = self.args.seed
+        def set_seed(seed):
+            self.tf.random.set_seed(seed)
+            np.random.seed(seed)
+            random.seed(seed)
+            self.env.seed(seed)
+        set_seed(self.seed)
 
     def get_stats(self):
         self.stats.update(dict(eval_time=self.eval_timer.mean))

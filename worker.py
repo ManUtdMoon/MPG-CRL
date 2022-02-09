@@ -13,6 +13,7 @@ from collections import deque
 
 import gym
 import numpy as np
+import random
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, safemean
@@ -41,6 +42,15 @@ class OnPolicyWorker(object):
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.learner = learner_cls(self.policy_with_value, self.args)
         self.sample_batch_size = self.args.sample_batch_size
+        
+        self.seed = self.args.seed + self.worker_id
+        def set_seed(seed):
+            self.tf.random.set_seed(seed)
+            np.random.seed(seed)
+            random.seed(seed)
+            self.env.seed(seed)
+        set_seed(self.seed)
+
         self.obs = self.env.reset()
         self.done = False
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,

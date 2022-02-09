@@ -13,6 +13,8 @@ from gym import spaces
 from model import MLPNet, MLPNetDSAC, PPONet
 from tensorflow.keras.optimizers.schedules import PolynomialDecay, PiecewiseConstantDecay
 
+from utils.misc import set_seed
+
 NAME2MODELCLS = dict([('MLP', MLPNet), ('DSAC', MLPNetDSAC), ('PPO', PPONet)])
 
 
@@ -35,6 +37,8 @@ class PolicyWithValue(tf.Module):
         n_hiddens, n_units, hidden_activation = self.args.num_hidden_layers, self.args.num_hidden_units, self.args.hidden_activation
         value_model_cls, policy_model_cls = NAME2MODELCLS[self.args.value_model_cls], \
                                             NAME2MODELCLS[self.args.policy_model_cls]
+        set_seed(self.args.seed)
+        self.tf.random.set_seed(self.args.seed)
         self.policy = policy_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, act_dim * 2, name='policy',
                                        output_activation=self.args.policy_out_activation)
         self.value = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='value')

@@ -13,12 +13,17 @@ import os
 import numpy as np
 import ray
 import tensorflow as tf
+import random
 
 from utils.misc import TimerStat, flatvars, unflatvars, get_shapes, judge_is_nan
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+def set_seed(seed):
+    tf.random.set_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
 class SingleProcessOptimizer(object):
     def __init__(self, worker, evaluator, args):
@@ -123,6 +128,7 @@ class AllReduceOptimizer(object):
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
         self.stats = {}
         self.step_timer = TimerStat()
+        set_seed(self.args.seed)
         logger.info('Optimizer initialized')
 
     def get_stats(self):

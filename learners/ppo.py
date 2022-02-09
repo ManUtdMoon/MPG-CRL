@@ -11,6 +11,7 @@ import logging
 
 import numpy as np
 import tensorflow as tf
+import random
 
 from utils.misc import TimerStat
 
@@ -32,6 +33,13 @@ class PPOLearner(tf.Module):
         self.mb_learning_timer = TimerStat()
         self.stats = {}
         self.permutation = None
+
+        self.seed = self.args.seed
+        def set_seed(seed):
+            self.tf.random.set_seed(seed)
+            np.random.seed(seed)
+            random.seed(seed)
+        set_seed(self.seed)
 
     def get_stats(self):
         return self.stats

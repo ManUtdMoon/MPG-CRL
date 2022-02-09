@@ -243,7 +243,7 @@ def built_TRPO_parser():
 def built_PPO_parser_for_DSAC():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--motivation', type=str, default='add grad norm 1 clip')
+    parser.add_argument('--motivation', type=str, default='add random seed')
     parser.add_argument('--mode', type=str, default='training') # training testing
     parser.add_argument("--seed", type=int, default=0)
     mode = parser.parse_args().mode
@@ -283,7 +283,7 @@ def built_PPO_parser_for_DSAC():
     parser.add_argument("--alg_name", default='PPO')
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--lam", type=float, default=0.95)
-    parser.add_argument("--gradient_clip_norm", type=float, default=1.)
+    parser.add_argument("--gradient_clip_norm", type=float, default=10.)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--ppo_loss_clip", type=float, default=0.2)
     parser.add_argument("--mini_batch_size", type=int, default=32)
@@ -338,7 +338,7 @@ def built_PPO_parser_for_DSAC():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/PPO/{task}-{time}'.format(task=env_id, time=time_now)
+    results_dir = '../results/PPO/{task}-{time}'.format(task=env_id, time=time_now)
     parser.add_argument("--result_dir", type=str, default=results_dir)
     parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
     parser.add_argument("--model_dir", type=str, default=results_dir + '/models')
@@ -446,7 +446,7 @@ def built_TRPO_parser_for_DSAC():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/TRPO/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/TRPO/experiment-{time}'.format(time=time_now)
     parser.add_argument("--result_dir", type=str, default=results_dir)
     parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
     parser.add_argument("--model_dir", type=str, default=results_dir + '/models')
