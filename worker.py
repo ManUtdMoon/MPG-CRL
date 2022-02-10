@@ -12,6 +12,10 @@ import os
 from collections import deque
 
 import gym
+import safe_control_gym
+from safe_control_gym.utils.configuration import ConfigFactory
+from safe_control_gym.utils.registration import make
+
 import numpy as np
 import random
 
@@ -36,7 +40,11 @@ class OnPolicyWorker(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        env = gym.make(env_id)
+
+        if self.args.env_id == 'quadrotor':
+            env = make('quadrotor', **self.args.config_eval.quadrotor_config)
+        else:
+            env = gym.make(env_id)
         self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)

@@ -273,7 +273,7 @@ def built_PPO_parser_for_DSAC():
     parser.add_argument('--off_policy', type=str, default=False)
 
     # env
-    parser.add_argument("--env_id", default='HalfCheetah-v2')
+    parser.add_argument("--env_id", default='quadrotor')
     #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2 Pendulum-v0
     env_id = parser.parse_args().env_id
     action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
@@ -293,18 +293,19 @@ def built_PPO_parser_for_DSAC():
     parser.add_argument('--sample_batch_size', type=int, default=1024)
 
     # tester and evaluator
-    parser.add_argument("--num_eval_episode", type=int, default=5)
+    parser.add_argument("--num_eval_episode", type=int, default=4)
     parser.add_argument("--eval_log_interval", type=int, default=1)
-    parser.add_argument("--max_step", type=int, default=1000)
+    parser.add_argument("--max_step", type=int, default=360)
     parser.add_argument("--eval_render", type=bool, default=False)
+    parser.add_argument('--eval_start_location', type=int, default=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)])
 
-    max_inner_iter = 500000 if env_id == 'InvertedDoublePendulum-v2' else 1000000
+    max_inner_iter = 500000 # if env_id == 'InvertedDoublePendulum-v2' else 1000000
     epoch = parser.parse_args().epoch
     batch_size = parser.parse_args().sample_batch_size
     mb_size = parser.parse_args().mini_batch_size
     inner_iter_per_iter = epoch * int(batch_size / mb_size)
     max_iter = int(max_inner_iter / inner_iter_per_iter)
-    eval_num = 200
+    eval_num = 100
     save_num = 20
     eval_interval = int(int(max_inner_iter / eval_num) / inner_iter_per_iter)
     save_interval = int(int(max_inner_iter / save_num) / inner_iter_per_iter)
@@ -325,7 +326,7 @@ def built_PPO_parser_for_DSAC():
     parser.add_argument("--obs_preprocess_type", type=str, default=None)
     parser.add_argument("--obs_scale", type=list, default=None)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale", type=float, default=0.2)
+    parser.add_argument("--reward_scale", type=float, default=1.0)
     parser.add_argument("--reward_shift", type=float, default=0.)
 
     # Optimizer (PABAL)

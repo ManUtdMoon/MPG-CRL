@@ -1,6 +1,6 @@
 quadrotor_config:
   seed: 59
-  info_in_reset: True
+  info_in_reset: False
   ctrl_freq: 60
   pyb_freq: 240
   gui: False
