@@ -271,9 +271,9 @@ class SingleProcessTRPOOptimizer(object):
                 g = -flat_g.copy()  # local gradient
                 x = np.zeros_like(flat_g)  # x_1
                 gdotg = g.dot(g)
-                print("{:10s} {:10s} {:10s}".format("cg_iter", "residual norm", "soln norm"))
+                # print("{:10s} {:10s} {:10s}".format("cg_iter", "residual norm", "soln norm"))
                 for i in range(self.args.cg_iters):
-                    print("{:<10d} {:10.3g} {:10.3g}".format(i, gdotg, np.linalg.norm(x)))
+                    # print("{:<10d} {:10.3g} {:10.3g}".format(i, gdotg, np.linalg.norm(x)))
                     Hd = compute_fvp(d)  # H*d
                     lmda = gdotg / d.dot(Hd)
                     x += lmda * d
@@ -463,7 +463,7 @@ class TRPOOptimizer(object):
                 stepsize = 1.0
                 thbefore = self.local_worker.policy_with_value.policy.get_weights()
                 self.search_result = 1
-                for _ in range(10):
+                for _ in range(15):
                     thnew_flat = flatvars(thbefore) - fullstep * stepsize
                     thnew = unflatvars(thnew_flat, get_shapes(self.local_worker.policy_with_value.policy.trainable_weights))
                     self.local_worker.policy_with_value.policy.set_weights(thnew)

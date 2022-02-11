@@ -8,8 +8,13 @@
 import logging
 import os
 from collections import deque
+import random
 
 import gym
+import safe_control_gym
+from safe_control_gym.utils.configuration import ConfigFactory
+from safe_control_gym.utils.registration import make
+
 import numpy as np
 
 from preprocessor import Preprocessor
@@ -30,9 +35,21 @@ class TRPOWorker(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        env = gym.make(env_id)
+        if self.args.env_id == 'quadrotor':
+            env = make('quadrotor', **self.args.config_eval.quadrotor_config)
+        else:
+            env = gym.make(env_id)
         self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
+
+        self.seed = self.args.seed + self.worker_id
+        def set_seed(seed):
+            self.tf.random.set_seed(seed)
+            np.random.seed(seed)
+            random.seed(seed)
+            self.env.seed(seed)
+        set_seed(self.seed)
+
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.old_policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.sample_batch_size = self.args.sample_batch_size
